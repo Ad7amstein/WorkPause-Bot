@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "WorkPause-Bot"
+version = "1.0.0"
+description = "WorkPause Discord Bot: A simple bot to help employees log time-off activities. Features three commands: leave (log time off with reason and compensation time), back (mark return to work), and break (log a 20-minute break)."
+authors = [
+    { name="Adham Allam", email="adham32003200@gmail.com" },
+]
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICEN[CS]E*", "AUTHORS.md"]
+keywords = ["discord-bot", "time-management", "project"]
+classifiers = [
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Setup Tools",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/Ad7amstein/WorkPause-Bot"
+
+[tool.pytest.ini_options]
+pythonpath = "src"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+# Example: mycli = "my_package.cli:main"
