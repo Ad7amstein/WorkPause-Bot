@@ -21,7 +21,7 @@ def save_json(data, save_path: Optional[str] = None, indent=2):
         f.write(json.dumps(data, indent=indent))
 
 
-def load_json(file_path: str, default: Optional[Any] = None, use_repair: bool = True):
+def load_json(file_path: str, default: dict = {}, use_repair: bool = True) -> dict:
     if not os.path.exists(file_path):
         return default
 
@@ -34,7 +34,7 @@ def load_json(file_path: str, default: Optional[Any] = None, use_repair: bool = 
 
         if use_repair:
             try:
-                return json_repair.loads(text)
+                return json_repair.loads(text)  # type:ignore
             except (ValueError, json.JSONDecodeError):
                 # Fallback to strict JSON if repair fails
                 return json.loads(text)
