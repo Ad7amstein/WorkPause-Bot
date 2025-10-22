@@ -22,16 +22,6 @@ def save_json(data, save_path: Optional[str] = None, indent=2):
 
 
 def load_json(file_path: str, default: Optional[Any] = None, use_repair: bool = True):
-    """Load JSON from a file path.
-
-    Args:
-        file_path: Path to the JSON file to read.
-        default: Value to return if file is missing, empty, or invalid. Defaults to None.
-        use_repair: If True, attempt to parse with json_repair first for mildly malformed JSON.
-
-    Returns:
-        Parsed JSON object (dict/list/etc.), or `default` if loading fails.
-    """
     if not os.path.exists(file_path):
         return default
 
