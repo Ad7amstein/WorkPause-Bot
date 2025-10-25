@@ -18,7 +18,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 # Logs file path
-LOG_FILE = "logs.json"
+LOG_FILE = "output/work_pause_activity_logs.json"
 
 # Load existing logs (or empty if none)
 logs = load_json(LOG_FILE, default={})
@@ -39,7 +39,8 @@ async def on_ready():
 
 # ========== SLASH COMMANDS ==========
 @bot.tree.command(
-    name="leave", description="Log a leave with reason, compensation time, and optional planned duration."
+    name="leave",
+    description="Log a leave with reason, compensation time, and optional planned duration.",
 )
 @app_commands.describe(
     reason="Reason for leaving",
@@ -161,7 +162,10 @@ async def take_break(interaction: discord.Interaction):
     )
 
 
-@bot.tree.command(name="show_logs", description="Show activity logs for a user.")
+@bot.tree.command(
+    name="show_logs",
+    description="Show activity logs. If no user is provided, shows all users' logs.",
+)
 @app_commands.describe(
     user="User to show logs for (optional)",
     start_date="Start date (YYYY-MM-DD)",
@@ -173,41 +177,79 @@ async def show_logs(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
 ):
-    user_id = str(user.id) if user else str(interaction.user.id)
-    user_logs = logs.get(user_id, [])
-
     start_dt = datetime.fromisoformat(start_date) if start_date else None
     end_dt = datetime.fromisoformat(end_date) if end_date else None
 
-    filtered_logs = [
-        log
-        for log in user_logs
-        if (not start_dt or datetime.fromisoformat(log["timestamp"]) >= start_dt)
-        and (not end_dt or datetime.fromisoformat(log["timestamp"]) <= end_dt)
-    ]
+    # If a specific user is provided, keep existing per-user behavior
+    if user:
+        user_id = str(user.id)
+        user_logs = logs.get(user_id, [])
+        filtered_logs = [
+            log
+            for log in user_logs
+            if (not start_dt or datetime.fromisoformat(log["timestamp"]) >= start_dt)
+            and (not end_dt or datetime.fromisoformat(log["timestamp"]) <= end_dt)
+        ]
 
-    if not filtered_logs:
-        await interaction.response.send_message(
-            f"No logs found for **{user.name if user else interaction.user.name}**."
-        )
+        if filtered_logs is None or len(filtered_logs) == 0:
+            await interaction.response.send_message(
+                f"No logs found for **{user.name if user else interaction.user.name}**."
+            )
+            return
+
+        log_text = f"🗂 Logs for **{user.name}**:\n"
+        for log in filtered_logs:
+            command = log["command"]
+            timestamp = log["timestamp"]
+            if command == "leave":
+                planned = log.get("planned_duration")
+                planned_txt = f", Planned: {planned}" if planned else ""
+                log_text += f"- 🏃 Leave at {timestamp} (Reason: {log.get('reason')}, Comp: {log.get('compensation_time')}{planned_txt})\n"
+            elif command == "back":
+                log_text += (
+                    f"- 🔙 Back at {timestamp} (Duration: {log.get('duration', 'N/A')})\n"
+                )
+            elif command == "break":
+                log_text += f"- ☕ Break at {timestamp} (Duration: {log.get('duration')})\n"
+
+        await interaction.response.send_message(log_text)
         return
 
-    log_text = f"🗂 Logs for **{user.name if user else interaction.user.name}**:\n"
-    for log in filtered_logs:
+    # No user provided: aggregate logs across all users
+    aggregated: list[tuple[str, dict]] = []  # (user_id, log)
+    for uid, ulogs in logs.items():
+        for log in ulogs:
+            ts_ok = True
+            if start_dt and datetime.fromisoformat(log["timestamp"]) < start_dt:
+                ts_ok = False
+            if end_dt and datetime.fromisoformat(log["timestamp"]) > end_dt:
+                ts_ok = False
+            if ts_ok:
+                aggregated.append((uid, log))
+
+    if not aggregated:
+        await interaction.response.send_message("No logs found.")
+        return
+
+    # Sort by timestamp ascending for readability
+    aggregated.sort(key=lambda x: x[1]["timestamp"])
+
+    log_text = "🗂 Logs for all users:\n"
+    for uid, log in aggregated:
+        user_mention = f"<@{uid}>"
         command = log["command"]
         timestamp = log["timestamp"]
+        prefix = f"{user_mention} — "
         if command == "leave":
             planned = log.get("planned_duration")
             planned_txt = f", Planned: {planned}" if planned else ""
-            log_text += (
-                f"- 🏃 Leave at {timestamp} (Reason: {log.get('reason')}, Comp: {log.get('compensation_time')}{planned_txt})\n"
-            )
+            log_text += f"- {prefix}🏃 Leave at {timestamp} (Reason: {log.get('reason')}, Comp: {log.get('compensation_time')}{planned_txt})\n"
         elif command == "back":
-            log_text += (
-                f"- 🔙 Back at {timestamp} (Duration: {log.get('duration', 'N/A')})\n"
-            )
+            log_text += f"- {prefix}🔙 Back at {timestamp} (Duration: {log.get('duration', 'N/A')})\n"
         elif command == "break":
-            log_text += f"- ☕ Break at {timestamp} (Duration: {log.get('duration')})\n"
+            log_text += (
+                f"- {prefix}☕ Break at {timestamp} (Duration: {log.get('duration')})\n"
+            )
 
     await interaction.response.send_message(log_text)
 
