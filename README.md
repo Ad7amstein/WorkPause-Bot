@@ -29,7 +29,7 @@ Watch a short demonstration of the bot in action:
 
 - ▶️ Video: [assets/demo.mp4](assets/demo.mp4)
 
-> Optional: You can also add a GIF preview `assets/demo.gif` and embed it here for inline viewing.
+![Demo GIF](assets/demo.gif)
 
 ## Features ✨
 
