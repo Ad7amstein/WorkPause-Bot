@@ -23,9 +23,16 @@ def save_logs():
     save_json(logs, indent=4)
 
 
+def check_user(user_id):
+    if logs.get(user_id) is None:
+        logs[user_id] = {"user_info": {"status": "on"}, "user_logs": []}
+
+    return logs[user_id]
+
+
 @bot.event
 async def on_ready():
-    await bot.tree.sync()  # Register slash commands
+    await bot.tree.sync()
     print(f"✅ Bot is ready as {bot.user}")
     print("✅ Slash commands synced.")
 
@@ -46,18 +53,29 @@ async def leave(
     duration: Optional[str] = None,
 ):
     user_id = str(interaction.user.id)
-    timestamp = datetime.now().isoformat()
+    check_user(user_id)
+    if logs[user_id]["user_info"]["status"] == "off":
+        msg_leave_off = (
+            "🚫 You’re already off right now — looks like you’ve logged a leave or break before. "
+            "Use `/back` first before logging another leave!"
+        )
+        await interaction.response.send_message(msg_leave_off)
+        return
 
+    timestamp = datetime.now().isoformat()
     leave_entry = {
         "command": "leave",
         "timestamp": timestamp,
-        "reason": reason,
-        "compensation_time": compensation_time,
+        "args": {
+            "reason": reason,
+            "compensation_time": compensation_time,
+        },
     }
     if duration:
         leave_entry["planned_duration"] = duration
 
-    logs[user_id] = logs.get(user_id, []) + [leave_entry]
+    logs[user_id]["user_logs"].append(leave_entry)
+    logs[user_id]["user_info"]["status"] = "off"
     save_logs()
 
     msg = (
@@ -74,37 +92,16 @@ async def leave(
 @bot.tree.command(name="back", description="Log that you're back from leave.")
 async def back(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
+    check_user(user_id)
+    if logs[user_id]["user_info"]["status"] == "on":
+        msg_already_on = "🫵 You’re already on! You can only use `/back` after you’ve logged a leave or break."
+        await interaction.response.send_message(msg_already_on)
+        return
+
     now = datetime.now()
     timestamp = now.isoformat()
 
-    user_logs = logs.get(user_id, [])
-    last_leave_index = None
-
-    for i in range(len(user_logs) - 1, -1, -1):
-        entry = user_logs[i]
-        if entry.get("command") != "leave":
-            continue
-        leave_ts = datetime.fromisoformat(entry["timestamp"])
-
-        has_back_after = any(
-            log.get("command") == "back"
-            and datetime.fromisoformat(log["timestamp"]) > leave_ts
-            for log in user_logs[i + 1 :]
-        )
-
-        if not has_back_after:
-            last_leave_index = i
-            break
-
-    if last_leave_index is None:
-        logs[user_id] = user_logs
-        save_logs()
-        await interaction.response.send_message(
-            f"✅ Logged back for **{interaction.user.name}** at {timestamp} (no unmatched leave found)."
-        )
-        return
-
-    leave_entry = user_logs[last_leave_index]
+    leave_entry = logs[user_id]["user_logs"][-1]
     leave_time = datetime.fromisoformat(leave_entry["timestamp"])
     delta = now - leave_time
     total_seconds = int(delta.total_seconds())
@@ -121,7 +118,8 @@ async def back(interaction: discord.Interaction):
         "duration": formatted_duration,
     }
 
-    user_logs.append(back_entry)
+    logs[user_id]["user_logs"].append(back_entry)
+    logs[user_id]["user_info"]["status"] = "on"
     leave_entry.update(
         {
             "returned_at": timestamp,
@@ -129,23 +127,31 @@ async def back(interaction: discord.Interaction):
             "duration": formatted_duration,
         }
     )
-
-    logs[user_id] = user_logs
     save_logs()
 
     await interaction.response.send_message(
         f"✅ Logged back for **{interaction.user.name}**.\n"
-        f"⏱ Duration since last leave: {formatted_duration}."
+        f"⏱ Duration since last {leave_entry['command']}: {formatted_duration}."
     )
 
 
 @bot.tree.command(name="break", description="Log a 20-minute break.")
 async def take_break(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
+    check_user(user_id)
+    if logs[user_id]["user_info"]["status"] == "off":
+        msg_break_off = (
+            "🚫 Hold up! You’re already off because of a previous leave or break. "
+            "Use `/back` first before logging another break!"
+        )
+        await interaction.response.send_message(msg_break_off)
+        return
+
     timestamp = datetime.now().isoformat()
-    logs[user_id] = logs.get(user_id, []) + [
+    logs[user_id]["user_logs"].append(
         {"command": "break", "timestamp": timestamp, "duration": "20min"}
-    ]
+    )
+    logs[user_id]["user_info"]["status"] = "off"
     save_logs()
 
     await interaction.response.send_message(
@@ -174,7 +180,8 @@ async def show_logs(
     # If a specific user is provided, keep existing per-user behavior
     if user:
         user_id = str(user.id)
-        user_logs = logs.get(user_id, [])
+        check_user(user_id)
+        user_logs = logs[user_id]["user_logs"]
         filtered_logs = [
             log
             for log in user_logs
@@ -193,27 +200,40 @@ async def show_logs(
             command = log["command"]
             timestamp = log["timestamp"]
             if command == "leave":
+                args = log.get("args", {})
+                reason = args.get("reason", "N/A")
+                comp = args.get("compensation_time", "N/A")
                 planned = log.get("planned_duration")
                 planned_txt = f", Planned: {planned}" if planned else ""
-                log_text += f"- 🏃 Leave at {timestamp} (Reason: {log.get('reason')}, Comp: {log.get('compensation_time')}{planned_txt})\n"
+                returned_at = log.get("returned_at")
+                duration = log.get("duration")
+                returned_txt = f", Returned: {returned_at}" if returned_at else ""
+                duration_txt = f", Duration: {duration}" if duration else ""
+                log_text += f"- 🏃 Leave at {timestamp} (Reason: {reason}, Comp: {comp}{planned_txt}{returned_txt}{duration_txt})\n"
             elif command == "back":
                 log_text += f"- 🔙 Back at {timestamp} (Duration: {log.get('duration', 'N/A')})\n"
             elif command == "break":
-                log_text += (
-                    f"- ☕ Break at {timestamp} (Duration: {log.get('duration')})\n"
-                )
+                returned_at = log.get("returned_at")
+                duration = log.get("duration")
+                returned_txt = f", Returned: {returned_at}" if returned_at else ""
+                duration_txt = f" (Duration: {duration})" if duration else ""
+                log_text += f"- ☕ Break at {timestamp}{duration_txt}{returned_txt}\n"
 
         await interaction.response.send_message(log_text)
         return
 
     # No user provided: aggregate logs across all users
     aggregated: list[tuple[str, dict]] = []  # (user_id, log)
-    for uid, ulogs in logs.items():
+    for uid, udata in logs.items():
+        ulogs = udata["user_logs"]
         for log in ulogs:
+            ts = log.get("timestamp")
+            if not ts:
+                continue
             ts_ok = True
-            if start_dt and datetime.fromisoformat(log["timestamp"]) < start_dt:
+            if start_dt and datetime.fromisoformat(ts) < start_dt:
                 ts_ok = False
-            if end_dt and datetime.fromisoformat(log["timestamp"]) > end_dt:
+            if end_dt and datetime.fromisoformat(ts) > end_dt:
                 ts_ok = False
             if ts_ok:
                 aggregated.append((uid, log))
@@ -232,14 +252,25 @@ async def show_logs(
         timestamp = log["timestamp"]
         prefix = f"{user_mention} — "
         if command == "leave":
+            args = log.get("args", {})
+            reason = args.get("reason", "N/A")
+            comp = args.get("compensation_time", "N/A")
             planned = log.get("planned_duration")
             planned_txt = f", Planned: {planned}" if planned else ""
-            log_text += f"- {prefix}🏃 Leave at {timestamp} (Reason: {log.get('reason')}, Comp: {log.get('compensation_time')}{planned_txt})\n"
+            returned_at = log.get("returned_at")
+            duration = log.get("duration")
+            returned_txt = f", Returned: {returned_at}" if returned_at else ""
+            duration_txt = f", Duration: {duration}" if duration else ""
+            log_text += f"- {prefix}🏃 Leave at {timestamp} (Reason: {reason}, Comp: {comp}{planned_txt}{returned_txt}{duration_txt})\n"
         elif command == "back":
             log_text += f"- {prefix}🔙 Back at {timestamp} (Duration: {log.get('duration', 'N/A')})\n"
         elif command == "break":
+            returned_at = log.get("returned_at")
+            duration = log.get("duration")
+            returned_txt = f", Returned: {returned_at}" if returned_at else ""
+            duration_txt = f" (Duration: {duration})" if duration else ""
             log_text += (
-                f"- {prefix}☕ Break at {timestamp} (Duration: {log.get('duration')})\n"
+                f"- {prefix}☕ Break at {timestamp}{duration_txt}{returned_txt}\n"
             )
 
     await interaction.response.send_message(log_text)
