@@ -1,26 +1,20 @@
 import os
 from typing import Optional
 from datetime import datetime
+
 import discord
 from discord import app_commands
 from discord.ext import commands
-from dotenv import load_dotenv
 
-# Import JSON utilities
-from src.utils.json_utils import load_json, save_json
+from utils.json_utils import load_json, save_json
+from utils.config_utils import get_settings
 
-# Load environment variables
-load_dotenv()
-
-# Bot setup
+app_settings = get_settings()
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
-# Logs file path
-LOG_FILE = "output/work_pause_activity_logs.json"
-
-# Load existing logs (or empty if none)
+LOG_FILE = os.path.join(app_settings.PATH_OUTPUT_ROOT, "work_pause_activity_logs.json")
 logs = load_json(LOG_FILE, default={})
 
 
@@ -29,7 +23,6 @@ def save_logs():
     save_json(logs, indent=4)
 
 
-# ========== EVENTS ==========
 @bot.event
 async def on_ready():
     await bot.tree.sync()  # Register slash commands
@@ -37,7 +30,6 @@ async def on_ready():
     print("✅ Slash commands synced.")
 
 
-# ========== SLASH COMMANDS ==========
 @bot.tree.command(
     name="leave",
     description="Log a leave with reason, compensation time, and optional planned duration.",
@@ -63,7 +55,6 @@ async def leave(
         "compensation_time": compensation_time,
     }
     if duration:
-        # Store user-provided planned/expected duration separately to avoid clashing with actual duration computed on /back
         leave_entry["planned_duration"] = duration
 
     logs[user_id] = logs.get(user_id, []) + [leave_entry]
@@ -206,11 +197,11 @@ async def show_logs(
                 planned_txt = f", Planned: {planned}" if planned else ""
                 log_text += f"- 🏃 Leave at {timestamp} (Reason: {log.get('reason')}, Comp: {log.get('compensation_time')}{planned_txt})\n"
             elif command == "back":
-                log_text += (
-                    f"- 🔙 Back at {timestamp} (Duration: {log.get('duration', 'N/A')})\n"
-                )
+                log_text += f"- 🔙 Back at {timestamp} (Duration: {log.get('duration', 'N/A')})\n"
             elif command == "break":
-                log_text += f"- ☕ Break at {timestamp} (Duration: {log.get('duration')})\n"
+                log_text += (
+                    f"- ☕ Break at {timestamp} (Duration: {log.get('duration')})\n"
+                )
 
         await interaction.response.send_message(log_text)
         return
@@ -254,11 +245,15 @@ async def show_logs(
     await interaction.response.send_message(log_text)
 
 
-# ========== RUN BOT ==========
-token = os.getenv("DISCORD_BOT_TOKEN")
-if not token:
-    raise ValueError(
-        "❌ No Discord bot token found. Set DISCORD_BOT_TOKEN in your .env file."
-    )
+def main():
+    """Entry Point for the Program."""
+    if not app_settings.DISCORD_BOT_TOKEN:
+        raise ValueError(
+            "❌ No Discord bot token found. Set DISCORD_BOT_TOKEN in your .env file."
+        )
 
-bot.run(token)
+    bot.run(app_settings.DISCORD_BOT_TOKEN)
+
+
+if __name__ == "__main__":
+    main()
