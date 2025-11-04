@@ -1,63 +1,69 @@
 {
-    "1022525300925530112": [
-        {
-            "command": "leave",
-            "timestamp": "2025-10-25T15:27:49.297881",
-            "reason": "Power outage",
-            "compensation_time": "tonight",
-            "planned_duration": "30",
-            "returned_at": "2025-10-25T15:28:01.091029",
-            "duration_seconds": 11,
-            "duration": "0m 11s"
+    "1433084149622902895": {
+        "user_info": {
+            "status": "on"
         },
-        {
-            "command": "back",
-            "timestamp": "2025-10-25T15:28:01.091029",
-            "duration_seconds": 11,
-            "duration": "0m 11s"
-        },
-        {
-            "command": "break",
-            "timestamp": "2025-10-25T15:29:16.621584",
-            "duration": "20min"
-        }
-    ],
-    "1332332969175683072": [
-        {
-            "command": "leave",
-            "timestamp": "2025-10-25T15:30:31.980460",
-            "reason": "internt issue",
-            "compensation_time": "tomorrow early",
-            "planned_duration": "1 hour",
-            "returned_at": "2025-10-25T15:30:44.101517",
-            "duration_seconds": 12,
-            "duration": "0m 12s"
-        },
-        {
-            "command": "back",
-            "timestamp": "2025-10-25T15:30:44.101517",
-            "duration_seconds": 12,
-            "duration": "0m 12s"
-        },
-        {
-            "command": "leave",
-            "timestamp": "2025-10-26T12:28:50.527478",
-            "reason": "power outage",
-            "compensation_time": "tonight",
-            "returned_at": "2025-10-26T12:29:07.543473",
-            "duration_seconds": 17,
-            "duration": "0m 17s"
-        },
-        {
-            "command": "back",
-            "timestamp": "2025-10-26T12:29:07.543473",
-            "duration_seconds": 17,
-            "duration": "0m 17s"
-        },
-        {
-            "command": "break",
-            "timestamp": "2025-10-26T12:29:22.285608",
-            "duration": "20min"
-        }
-    ]
+        "user_logs": [
+            {
+                "command": "leave",
+                "timestamp": "2025-11-04T15:48:41.610774",
+                "args": {
+                    "reason": "a",
+                    "compensation_time": "b"
+                },
+                "returned_at": "2025-11-04T15:49:00.330495",
+                "duration_seconds": 18,
+                "duration": "0m 18s"
+            },
+            {
+                "command": "back",
+                "timestamp": "2025-11-04T15:49:00.330495",
+                "duration_seconds": 18,
+                "duration": "0m 18s"
+            },
+            {
+                "command": "break",
+                "timestamp": "2025-11-04T15:49:54.024619",
+                "duration": "0m 8s",
+                "returned_at": "2025-11-04T15:50:02.210124",
+                "duration_seconds": 8
+            },
+            {
+                "command": "back",
+                "timestamp": "2025-11-04T15:50:02.210124",
+                "duration_seconds": 8,
+                "duration": "0m 8s"
+            },
+            {
+                "command": "leave",
+                "timestamp": "2025-11-04T16:06:26.757362",
+                "args": {
+                    "reason": "a",
+                    "compensation_time": "b"
+                },
+                "returned_at": "2025-11-04T16:06:42.411085",
+                "duration_seconds": 15,
+                "duration": "0m 15s"
+            },
+            {
+                "command": "back",
+                "timestamp": "2025-11-04T16:06:42.411085",
+                "duration_seconds": 15,
+                "duration": "0m 15s"
+            },
+            {
+                "command": "break",
+                "timestamp": "2025-11-04T16:07:01.458557",
+                "duration": "0m 19s",
+                "returned_at": "2025-11-04T16:07:21.043670",
+                "duration_seconds": 19
+            },
+            {
+                "command": "back",
+                "timestamp": "2025-11-04T16:07:21.043670",
+                "duration_seconds": 19,
+                "duration": "0m 19s"
+            }
+        ]
+    }
 }
